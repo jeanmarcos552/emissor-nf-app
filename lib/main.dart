@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'src/api/nfe_api.dart';
 import 'src/auth_store.dart';
-import 'src/models/empresa.dart';
 import 'src/onboarding/onboarding_flow.dart';
 import 'src/screens/empresas_screen.dart';
 import 'src/screens/login_screen.dart';
