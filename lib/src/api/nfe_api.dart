@@ -66,6 +66,18 @@ class NfeApi {
     }
   }
 
+  /// Valida o token atual chamando `GET /auth/me`.
+  /// Retorna false se não há sessão, se o token expirou (401) ou em erro de rede.
+  Future<bool> validarSessao() async {
+    if (!auth.isLoggedIn) return false;
+    try {
+      final res = await _client.get(Uri.parse('$_base/auth/me'), headers: _headers);
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ----- Empresas -----
 
   Future<List<Empresa>> listarEmpresas() async {
