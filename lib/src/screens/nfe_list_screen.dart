@@ -1,12 +1,18 @@
+// lib/src/screens/nfe_list_screen.dart
 import 'package:flutter/material.dart';
 
 import '../api/nfe_api.dart';
 import '../models/nfe.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_card.dart';
+import '../widgets/status_badge.dart';
 
 class NfeListScreen extends StatefulWidget {
   final NfeApi api;
   final int empresaId;
-  const NfeListScreen({super.key, required this.api, required this.empresaId});
+  const NfeListScreen(
+      {super.key, required this.api, required this.empresaId});
 
   @override
   State<NfeListScreen> createState() => _NfeListScreenState();
@@ -21,22 +27,8 @@ class _NfeListScreenState extends State<NfeListScreen> {
     _future = widget.api.listarNfe(widget.empresaId);
   }
 
-  void _reload() => setState(() => _future = widget.api.listarNfe(widget.empresaId));
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'autorizada':
-        return Colors.green;
-      case 'cancelada':
-        return Colors.grey;
-      case 'rejeitada':
-      case 'denegada':
-      case 'erro':
-        return Colors.red;
-      default:
-        return Colors.blueGrey;
-    }
-  }
+  void _reload() =>
+      setState(() => _future = widget.api.listarNfe(widget.empresaId));
 
   Future<void> _emitir(Nfe nfe) async {
     _snack('Emitindo NF-e ${nfe.numero}...');
@@ -52,7 +44,9 @@ class _NfeListScreenState extends State<NfeListScreen> {
   void _snack(String msg, {bool erro = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: erro ? Colors.red : null),
+      SnackBar(
+          content: Text(msg),
+          backgroundColor: erro ? AppColors.danger : null),
     );
   }
 
@@ -69,9 +63,9 @@ class _NfeListScreenState extends State<NfeListScreen> {
           if (snap.hasError) {
             return ListView(children: [
               Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('Erro ao carregar: ${snap.error}'),
-              ),
+                  padding: const EdgeInsets.all(24),
+                  child: Text('Erro ao carregar: ${snap.error}',
+                      style: const TextStyle(color: AppColors.danger)))
             ]);
           }
           final notas = snap.data ?? [];
@@ -79,34 +73,67 @@ class _NfeListScreenState extends State<NfeListScreen> {
             return ListView(children: const [
               Padding(
                 padding: EdgeInsets.all(48),
-                child: Center(child: Text('Nenhuma NF-e ainda. Toque em "Nova NF-e".')),
+                child: Center(
+                    child: Text('Nenhuma NF-e ainda. Toque em "Nova NF-e".',
+                        style: TextStyle(color: AppColors.gray))),
               ),
             ]);
           }
-          return ListView.separated(
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
             itemCount: notas.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, i) {
               final n = notas[i];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: _statusColor(n.status).withValues(alpha: 0.15),
-                  child: Text('${n.numero}',
-                      style: TextStyle(color: _statusColor(n.status), fontSize: 12)),
-                ),
-                title: Text(n.destNome),
-                subtitle: Text('R\$ ${n.valorTotal.toStringAsFixed(2)} · ${n.status}'
-                    '${n.motivo != null ? '\n${n.motivo}' : ''}'),
-                isThreeLine: n.motivo != null,
-                trailing: n.status == 'rascunho'
-                    ? FilledButton(onPressed: () => _emitir(n), child: const Text('Emitir'))
-                    : (n.status == 'autorizada'
-                        ? IconButton(
-                            icon: const Icon(Icons.picture_as_pdf_outlined),
-                            tooltip: 'DANFE',
-                            onPressed: () => _snack('DANFE: ${widget.api.danfeUrl(widget.empresaId, n.id)}'),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text('NF-e ${n.numero}/${n.serie}',
+                              style: const TextStyle(
+                                  color: AppColors.text,
+                                  fontWeight: FontWeight.w600)),
+                          const Spacer(),
+                          StatusBadge.nfe(n.status),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(n.destNome,
+                          style: const TextStyle(color: AppColors.text)),
+                      Text('R\$ ${n.valorTotal.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              color: AppColors.gray, fontSize: 13)),
+                      if (n.motivo != null) ...[
+                        const SizedBox(height: 4),
+                        Text(n.motivo!,
+                            style: const TextStyle(
+                                color: AppColors.gray, fontSize: 12)),
+                      ],
+                      if (n.status == 'rascunho' || n.status == 'autorizada') ...[
+                        const SizedBox(height: 10),
+                        if (n.status == 'rascunho')
+                          AppButton(
+                            label: 'Emitir',
+                            icon: Icons.send,
+                            expand: false,
+                            onPressed: () => _emitir(n),
                           )
-                        : null),
+                        else
+                          AppButton(
+                            label: 'DANFE',
+                            icon: Icons.picture_as_pdf_outlined,
+                            variant: AppButtonVariant.outline,
+                            expand: false,
+                            onPressed: () => _snack(
+                                'DANFE: ${widget.api.danfeUrl(widget.empresaId, n.id)}'),
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
               );
             },
           );
