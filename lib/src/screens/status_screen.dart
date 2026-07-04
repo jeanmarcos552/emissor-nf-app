@@ -25,8 +25,11 @@ class _StatusScreenState extends State<StatusScreen> {
     _consultar();
   }
 
-  void _consultar() =>
-      setState(() => _future = widget.api.sefazStatus(widget.empresaId));
+  void _consultar() {
+    setState(() {
+      _future = widget.api.sefazStatus(widget.empresaId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

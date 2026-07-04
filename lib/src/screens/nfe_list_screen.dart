@@ -27,8 +27,11 @@ class _NfeListScreenState extends State<NfeListScreen> {
     _future = widget.api.listarNfe(widget.empresaId);
   }
 
-  void _reload() =>
-      setState(() => _future = widget.api.listarNfe(widget.empresaId));
+  void _reload() {
+    setState(() {
+      _future = widget.api.listarNfe(widget.empresaId);
+    });
+  }
 
   Future<void> _emitir(Nfe nfe) async {
     _snack('Emitindo NF-e ${nfe.numero}...');
