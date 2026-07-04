@@ -45,3 +45,4 @@ lib/
 - Compila limpo (`flutter analyze` sem issues; widget test passando; build web OK).
 - Fluxo de conta/empresa/certificado/rascunho funcional contra a API.
 - **Emitir** depende de um certificado A1 (.pfx) válido cadastrado na empresa.
+# emissor-nf-app
