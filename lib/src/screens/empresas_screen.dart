@@ -1,14 +1,21 @@
+// lib/src/screens/empresas_screen.dart
 import 'package:flutter/material.dart';
 
 import '../api/nfe_api.dart';
 import '../models/empresa.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_card.dart';
+import '../widgets/app_scaffold.dart';
+import '../widgets/empresa_form.dart';
+import '../widgets/status_badge.dart';
 import 'certificado_screen.dart';
 import 'empresa_dashboard.dart';
 
 class EmpresasScreen extends StatefulWidget {
   final NfeApi api;
   final VoidCallback onLogout;
-  const EmpresasScreen({super.key, required this.api, required this.onLogout});
+  const EmpresasScreen(
+      {super.key, required this.api, required this.onLogout});
 
   @override
   State<EmpresasScreen> createState() => _EmpresasScreenState();
@@ -26,11 +33,35 @@ class _EmpresasScreenState extends State<EmpresasScreen> {
   void _reload() => setState(() => _future = widget.api.listarEmpresas());
 
   Future<void> _adicionar() async {
-    final ok = await showDialog<bool>(
+    final criada = await showDialog<bool>(
       context: context,
-      builder: (_) => _NovaEmpresaDialog(api: widget.api),
+      builder: (_) => Dialog(
+        backgroundColor: AppColors.scaffoldBg,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Adicionar empresa',
+                    style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                EmpresaForm(
+                  api: widget.api,
+                  onCreated: (_) => Navigator.of(context).pop(true),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
-    if (ok == true) _reload();
+    if (criada == true) _reload();
   }
 
   Future<void> _sair() async {
@@ -40,15 +71,18 @@ class _EmpresasScreenState extends State<EmpresasScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Minhas empresas'),
-        actions: [
-          IconButton(onPressed: _sair, icon: const Icon(Icons.logout), tooltip: 'Sair'),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Minhas empresas',
+      actions: [
+        IconButton(
+            onPressed: _sair,
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sair'),
+      ],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _adicionar,
+        backgroundColor: AppColors.secondary,
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.add_business),
         label: const Text('Adicionar CNPJ'),
       ),
@@ -61,135 +95,85 @@ class _EmpresasScreenState extends State<EmpresasScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snap.hasError) {
-              return ListView(children: [Padding(padding: const EdgeInsets.all(24), child: Text('Erro: ${snap.error}'))]);
+              return ListView(children: [
+                Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Erro: ${snap.error}',
+                        style: const TextStyle(color: AppColors.danger)))
+              ]);
             }
             final empresas = snap.data ?? [];
             if (empresas.isEmpty) {
               return ListView(children: const [
                 Padding(
                   padding: EdgeInsets.all(48),
-                  child: Center(child: Text('Nenhuma empresa. Adicione um CNPJ para começar.')),
+                  child: Center(
+                      child: Text(
+                          'Nenhuma empresa. Toque em "Adicionar CNPJ".',
+                          style: TextStyle(color: AppColors.gray))),
                 ),
               ]);
             }
-            return ListView.separated(
+            return ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               itemCount: empresas.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, i) {
                 final e = empresas[i];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: e.certificadoOk ? Colors.green.shade100 : Colors.orange.shade100,
-                    child: Icon(e.certificadoOk ? Icons.verified_user : Icons.gpp_maybe,
-                        color: e.certificadoOk ? Colors.green : Colors.orange),
-                  ),
-                  title: Text(e.razaoSocial),
-                  subtitle: Text('${e.cnpj} · ${e.uf ?? ''} · ${e.ambienteLabel}\n'
-                      '${e.certificadoOk ? 'Certificado OK' : 'Sem certificado válido'}'),
-                  isThreeLine: true,
-                  trailing: e.certificadoOk
-                      ? const Icon(Icons.chevron_right)
-                      : TextButton(
-                          onPressed: () async {
-                            await Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => CertificadoScreen(api: widget.api, empresa: e),
-                            ));
-                            _reload();
-                          },
-                          child: const Text('Certificado'),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: AppCard(
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) =>
+                            EmpresaDashboard(api: widget.api, empresa: e))),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(e.nomeFantasia ?? e.razaoSocial,
+                                  style: const TextStyle(
+                                      color: AppColors.text,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                            const Icon(Icons.chevron_right,
+                                color: AppColors.gray),
+                          ],
                         ),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => EmpresaDashboard(api: widget.api, empresa: e),
-                  )),
+                        const SizedBox(height: 4),
+                        Text('${e.cnpj} · ${e.uf ?? ''} · ${e.ambienteLabel}',
+                            style: const TextStyle(
+                                color: AppColors.gray, fontSize: 12)),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            StatusBadge.certificado(e.certificadoOk),
+                            const Spacer(),
+                            if (!e.certificadoOk)
+                              TextButton(
+                                onPressed: () async {
+                                  await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                          builder: (_) => CertificadoScreen(
+                                              api: widget.api, empresa: e)));
+                                  _reload();
+                                },
+                                child: const Text('Enviar certificado',
+                                    style:
+                                        TextStyle(color: AppColors.primary)),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             );
           },
         ),
       ),
-    );
-  }
-}
-
-class _NovaEmpresaDialog extends StatefulWidget {
-  final NfeApi api;
-  const _NovaEmpresaDialog({required this.api});
-
-  @override
-  State<_NovaEmpresaDialog> createState() => _NovaEmpresaDialogState();
-}
-
-class _NovaEmpresaDialogState extends State<_NovaEmpresaDialog> {
-  final _cnpj = TextEditingController();
-  final _ie = TextEditingController();
-  int _crt = 1;
-  bool _loading = false;
-  String? _previa;
-
-  Future<void> _buscar() async {
-    setState(() => _loading = true);
-    try {
-      final info = await widget.api.buscarCnpj(_cnpj.text.replaceAll(RegExp(r'\D'), ''));
-      setState(() => _previa = '${info.razaoSocial ?? '-'} · ${info.municipio ?? ''}/${info.uf ?? ''}');
-    } catch (e) {
-      setState(() => _previa = 'Não encontrado: $e');
-    } finally {
-      setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _salvar() async {
-    setState(() => _loading = true);
-    try {
-      await widget.api.criarEmpresa({
-        'cnpj': _cnpj.text.replaceAll(RegExp(r'\D'), ''),
-        'ie': _ie.text,
-        'crt': _crt,
-        'ambiente': 2,
-      });
-      if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'), backgroundColor: Colors.red));
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Adicionar CNPJ'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _cnpj,
-            decoration: InputDecoration(
-              labelText: 'CNPJ',
-              suffixIcon: IconButton(icon: const Icon(Icons.search), onPressed: _loading ? null : _buscar),
-            ),
-            keyboardType: TextInputType.number,
-          ),
-          if (_previa != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_previa!)),
-          TextField(controller: _ie, decoration: const InputDecoration(labelText: 'Inscrição Estadual')),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
-            initialValue: _crt,
-            decoration: const InputDecoration(labelText: 'Regime (CRT)'),
-            items: const [
-              DropdownMenuItem(value: 1, child: Text('Simples Nacional')),
-              DropdownMenuItem(value: 3, child: Text('Regime Normal')),
-            ],
-            onChanged: (v) => setState(() => _crt = v ?? 1),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
-        FilledButton(onPressed: _loading ? null : _salvar, child: const Text('Salvar')),
-      ],
     );
   }
 }
