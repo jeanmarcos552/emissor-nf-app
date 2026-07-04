@@ -1,13 +1,20 @@
+// lib/src/screens/certificado_screen.dart
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../api/nfe_api.dart';
 import '../models/empresa.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_card.dart';
+import '../widgets/app_scaffold.dart';
+import '../widgets/app_text_field.dart';
 
 class CertificadoScreen extends StatefulWidget {
   final NfeApi api;
   final Empresa empresa;
-  const CertificadoScreen({super.key, required this.api, required this.empresa});
+  const CertificadoScreen(
+      {super.key, required this.api, required this.empresa});
 
   @override
   State<CertificadoScreen> createState() => _CertificadoScreenState();
@@ -19,11 +26,17 @@ class _CertificadoScreenState extends State<CertificadoScreen> {
   String? _fileName;
   bool _loading = false;
 
+  @override
+  void dispose() {
+    _senha.dispose();
+    super.dispose();
+  }
+
   Future<void> _escolher() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pfx', 'p12'],
-      withData: true, // necessário no web (path é nulo lá)
+      withData: true,
     );
     if (result != null && result.files.single.bytes != null) {
       setState(() {
@@ -35,21 +48,24 @@ class _CertificadoScreenState extends State<CertificadoScreen> {
 
   Future<void> _enviar() async {
     if (_bytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecione o arquivo .pfx')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecione o arquivo .pfx')));
       return;
     }
     setState(() => _loading = true);
     try {
-      await widget.api.uploadCertificado(widget.empresa.id, _bytes!, _fileName ?? 'certificado.pfx', _senha.text);
+      await widget.api.uploadCertificado(
+          widget.empresa.id, _bytes!, _fileName ?? 'certificado.pfx', _senha.text);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Certificado cadastrado!'), backgroundColor: Colors.green),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Certificado cadastrado!'),
+            backgroundColor: AppColors.success));
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$e'), backgroundColor: AppColors.danger));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -58,31 +74,44 @@ class _CertificadoScreenState extends State<CertificadoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Certificado · ${widget.empresa.razaoSocial}')),
+    return AppScaffold(
+      title: 'Certificado',
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('Envie o certificado digital A1 (.pfx / e-CNPJ) desta empresa.'),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: _escolher,
-            icon: const Icon(Icons.attach_file),
-            label: Text(_fileName ?? 'Selecionar arquivo .pfx'),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _senha,
-            decoration: const InputDecoration(labelText: 'Senha do certificado'),
-            obscureText: true,
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: _loading ? null : _enviar,
-            icon: _loading
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.upload),
-            label: const Text('Enviar certificado'),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(widget.empresa.razaoSocial,
+                    style: const TextStyle(
+                        color: AppColors.text, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                const Text(
+                    'Envie o certificado digital A1 (.pfx / e-CNPJ) desta empresa.',
+                    style: TextStyle(color: AppColors.gray)),
+                const SizedBox(height: 16),
+                AppButton(
+                  label: _fileName ?? 'Selecionar arquivo .pfx',
+                  icon: Icons.attach_file,
+                  variant: AppButtonVariant.outline,
+                  onPressed: _escolher,
+                ),
+                const SizedBox(height: 8),
+                AppTextField(
+                    controller: _senha,
+                    label: 'Senha do certificado',
+                    icon: Icons.lock_outline,
+                    obscureText: true),
+                const SizedBox(height: 16),
+                AppButton(
+                  label: 'Enviar certificado',
+                  icon: Icons.upload,
+                  loading: _loading,
+                  onPressed: _enviar,
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -1,7 +1,11 @@
+// lib/src/screens/status_screen.dart
 import 'package:flutter/material.dart';
 
 import '../api/nfe_api.dart';
 import '../models/sefaz_status.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_button.dart';
+import '../widgets/app_card.dart';
 
 class StatusScreen extends StatefulWidget {
   final NfeApi api;
@@ -21,9 +25,8 @@ class _StatusScreenState extends State<StatusScreen> {
     _consultar();
   }
 
-  void _consultar() {
-    setState(() => _future = widget.api.sefazStatus(widget.empresaId));
-  }
+  void _consultar() =>
+      setState(() => _future = widget.api.sefazStatus(widget.empresaId));
 
   @override
   Widget build(BuildContext context) {
@@ -42,19 +45,19 @@ class _StatusScreenState extends State<StatusScreen> {
                 );
               }
               if (snap.hasError) {
-                return _Card(
-                  color: Colors.red.shade50,
+                return _StatusCard(
+                  color: AppColors.danger,
                   icon: Icons.error_outline,
-                  iconColor: Colors.red,
                   title: 'Não foi possível consultar',
                   subtitle: '${snap.error}',
                 );
               }
               final s = snap.data!;
-              return _Card(
-                color: s.online ? Colors.green.shade50 : Colors.orange.shade50,
-                icon: s.online ? Icons.check_circle_outline : Icons.warning_amber_outlined,
-                iconColor: s.online ? Colors.green : Colors.orange,
+              return _StatusCard(
+                color: s.online ? AppColors.success : AppColors.warning,
+                icon: s.online
+                    ? Icons.check_circle_outline
+                    : Icons.warning_amber_outlined,
                 title: s.online ? 'SEFAZ em operação' : 'SEFAZ indisponível',
                 subtitle: '[${s.cStat}] ${s.motivo}\n'
                     'UF ${s.uf} · Ambiente: ${s.ambienteLabel}',
@@ -62,10 +65,10 @@ class _StatusScreenState extends State<StatusScreen> {
             },
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
+          AppButton(
+            label: 'Consultar status',
+            icon: Icons.refresh,
             onPressed: _consultar,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Consultar status'),
           ),
         ],
       ),
@@ -73,16 +76,14 @@ class _StatusScreenState extends State<StatusScreen> {
   }
 }
 
-class _Card extends StatelessWidget {
+class _StatusCard extends StatelessWidget {
   final Color color;
-  final Color iconColor;
   final IconData icon;
   final String title;
   final String subtitle;
 
-  const _Card({
+  const _StatusCard({
     required this.color,
-    required this.iconColor,
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -90,27 +91,30 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: color,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: iconColor, size: 40),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 6),
-                  Text(subtitle),
-                ],
-              ),
+    return AppCard(
+      background: color.withValues(alpha: 0.12),
+      border: color.withValues(alpha: 0.4),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 40),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Text(subtitle, style: const TextStyle(color: AppColors.gray)),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
