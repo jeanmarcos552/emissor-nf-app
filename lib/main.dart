@@ -65,7 +65,7 @@ class _RootGateState extends State<RootGate> {
     try {
       final empresas = await widget.api.listarEmpresas();
       final precisaOnboarding =
-          empresas.isEmpty || !empresas.first.certificadoOk;
+          empresas.isEmpty || !empresas.any((e) => e.certificadoOk);
       if (mounted) {
         setState(() =>
             _dest = precisaOnboarding ? _Dest.onboarding : _Dest.empresas);

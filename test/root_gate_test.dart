@@ -30,4 +30,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Buscar CNPJ'), findsWidgets); // passo 1 do wizard
   });
+
+  testWidgets(
+      'logado com uma empresa configurada (mesmo que outra sem cert) vai para a lista',
+      (tester) async {
+    final auth = AuthStore()..token = 'tok';
+    final client = MockClient((req) async {
+      if (req.url.path.endsWith('/auth/me')) return http.Response('{"id":1}', 200);
+      if (req.url.path.endsWith('/empresas')) {
+        return http.Response(
+            '[{"id":1,"cnpj":"111","razao_social":"SEM CERT","ambiente":2,"certificado_ok":false},{"id":2,"cnpj":"222","razao_social":"COM CERT","ambiente":2,"certificado_ok":true}]',
+            200);
+      }
+      return http.Response('', 404);
+    });
+    final api = NfeApi(auth: auth, client: client);
+    await tester.pumpWidget(EmissorApp(api: api));
+    await tester.pumpAndSettle();
+    expect(find.text('Minhas empresas'), findsWidgets);
+    expect(find.text('Buscar CNPJ'), findsNothing);
+  });
 }

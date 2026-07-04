@@ -30,7 +30,9 @@ class _EmpresasScreenState extends State<EmpresasScreen> {
     _reload();
   }
 
-  void _reload() => setState(() => _future = widget.api.listarEmpresas());
+  void _reload() => setState(() {
+        _future = widget.api.listarEmpresas();
+      });
 
   Future<void> _adicionar() async {
     final criada = await showDialog<bool>(

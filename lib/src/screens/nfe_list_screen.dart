@@ -35,7 +35,7 @@ class _NfeListScreenState extends State<NfeListScreen> {
     try {
       await widget.api.emitir(widget.empresaId, nfe.id);
       _snack('NF-e ${nfe.numero} autorizada!');
-      _reload();
+      if (mounted) _reload();
     } catch (e) {
       _snack('$e', erro: true);
     }

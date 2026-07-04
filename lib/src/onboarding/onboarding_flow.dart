@@ -169,7 +169,7 @@ class _CertificadoStepState extends State<_CertificadoStep> {
     try {
       await widget.api.uploadCertificado(
           widget.empresa.id, _bytes!, _fileName ?? 'certificado.pfx', _senha.text);
-      widget.onDone();
+      if (mounted) widget.onDone();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
