@@ -44,17 +44,19 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           child: const Text('Sair', style: TextStyle(color: AppColors.gray)),
         ),
       ],
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              StepIndicator(current: _step, total: 3),
-              const SizedBox(height: 20),
-              _buildStep(),
-            ],
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                StepIndicator(current: _step, total: 3),
+                const SizedBox(height: 20),
+                _buildStep(),
+              ],
+            ),
           ),
         ),
       ),

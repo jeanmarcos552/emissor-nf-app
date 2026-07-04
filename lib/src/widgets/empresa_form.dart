@@ -49,12 +49,14 @@ class _EmpresaFormState extends State<EmpresaForm> {
     });
     try {
       final info = await widget.api.buscarCnpj(_cnpjLimpo);
-      setState(() => _info = info);
+      if (mounted) setState(() => _info = info);
     } catch (e) {
-      setState(() {
-        _info = null;
-        _erro = '$e';
-      });
+      if (mounted) {
+        setState(() {
+          _info = null;
+          _erro = '$e';
+        });
+      }
     } finally {
       if (mounted) setState(() => _buscando = false);
     }
