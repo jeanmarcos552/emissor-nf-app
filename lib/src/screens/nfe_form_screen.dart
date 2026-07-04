@@ -159,6 +159,7 @@ class _NfeFormScreenState extends State<NfeFormScreen> {
   Widget _itemCard(int i) {
     final item = _itens[i];
     return Padding(
+      key: ObjectKey(item),
       padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
         child: Column(
