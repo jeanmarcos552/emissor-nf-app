@@ -532,7 +532,7 @@ git commit -m "feat(widgets): AppButton com variantes e loading"
 
 **Interfaces:**
 - Consumes: `AppColors`.
-- Produces: `AppTextField({TextEditingController? controller, required String label, IconData? icon, String? errorText, bool obscureText = false, TextInputType? keyboardType, String? Function(String?)? validator, Widget? suffix})`.
+- Produces: `AppTextField({TextEditingController? controller, required String label, IconData? icon, String? errorText, bool obscureText = false, TextInputType? keyboardType, String? Function(String?)? validator, Widget? suffix, ValueChanged<String>? onChanged})`.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
@@ -579,6 +579,7 @@ class AppTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
   final Widget? suffix;
+  final ValueChanged<String>? onChanged;
 
   const AppTextField({
     super.key,
@@ -590,6 +591,7 @@ class AppTextField extends StatelessWidget {
     this.keyboardType,
     this.validator,
     this.suffix,
+    this.onChanged,
   });
 
   @override
@@ -601,6 +603,7 @@ class AppTextField extends StatelessWidget {
         obscureText: obscureText,
         keyboardType: keyboardType,
         validator: validator,
+        onChanged: onChanged,
         style: const TextStyle(color: AppColors.text),
         decoration: InputDecoration(
           labelText: label,
@@ -2389,8 +2392,8 @@ class _NfeFormScreenState extends State<NfeFormScreen> {
     super.dispose();
   }
 
-  void _addItem() => setState(
-      () => _itens.add(NfeItemInput(codigo: 'P${_itens.length + 1}'.padLeft(4, '0'))));
+  void _addItem() => setState(() => _itens.add(
+      NfeItemInput(codigo: 'P${(_itens.length + 1).toString().padLeft(3, '0')}')));
 
   void _removeItem(int i) => setState(() => _itens.removeAt(i));
 
@@ -2533,15 +2536,9 @@ class _NfeFormScreenState extends State<NfeFormScreen> {
                   ),
               ],
             ),
-            AppTextField(
-                label: 'Descrição do produto',
-                validator: _req,
-                icon: Icons.inventory_2_outlined,
-                controller: TextEditingController(text: item.descricao)
-                  ..selection = TextSelection.collapsed(
-                      offset: item.descricao.length),
-                keyboardType: TextInputType.text),
-            // NOTA: os campos abaixo escrevem direto no NfeItemInput via onChanged
+            _itemField('Descrição do produto', item.descricao,
+                (v) => item.descricao = v,
+                icon: Icons.inventory_2_outlined, validator: _req),
             _itemField('NCM (8 díg.)', item.ncm, (v) => item.ncm = v,
                 validator: (v) => (v == null || v.length != 8) ? '8 dígitos' : null),
             _itemField('CFOP', item.cfop, (v) => item.cfop = v,
@@ -2570,28 +2567,33 @@ class _NfeFormScreenState extends State<NfeFormScreen> {
   }
 
   Widget _itemField(String label, String initial, ValueChanged<String> onChanged,
-      {TextInputType? keyboardType, String? Function(String?)? validator}) {
+      {IconData? icon,
+      TextInputType? keyboardType,
+      String? Function(String?)? validator}) {
     return _ItemField(
       label: label,
       initial: initial,
       onChanged: onChanged,
+      icon: icon,
       keyboardType: keyboardType,
       validator: validator,
     );
   }
 }
 
-/// Campo controlado por callback, para escrever direto no NfeItemInput.
+/// Campo de item controlado por callback, gravando direto no NfeItemInput.
 class _ItemField extends StatefulWidget {
   final String label;
   final String initial;
   final ValueChanged<String> onChanged;
+  final IconData? icon;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
   const _ItemField({
     required this.label,
     required this.initial,
     required this.onChanged,
+    this.icon,
     this.keyboardType,
     this.validator,
   });
@@ -2615,37 +2617,63 @@ class _ItemFieldState extends State<_ItemField> {
     return AppTextField(
       controller: _c,
       label: widget.label,
+      icon: widget.icon,
       keyboardType: widget.keyboardType,
       validator: widget.validator,
-      // encaminha cada mudança para o modelo
-      suffix: null,
-    )..hashCode; // no-op para manter const-free
+      onChanged: widget.onChanged,
+    );
   }
 }
 ```
 
-> **Correção de acoplamento (aplicar neste passo):** o `_ItemField` acima precisa propagar `onChanged`. Como `AppTextField` não expõe `onChanged`, adicione ao `AppTextField` (Task 5) o parâmetro opcional `final ValueChanged<String>? onChanged;` e repasse-o a `TextFormField(onChanged: onChanged, ...)`. Depois, em `_ItemFieldState.build`, use `AppTextField(controller: _c, label: widget.label, keyboardType: widget.keyboardType, validator: widget.validator, onChanged: widget.onChanged)` e remova a linha `..hashCode`. Para a descrição, troque o `TextEditingController` inline por um `_ItemField(label: 'Descrição do produto', initial: item.descricao, onChanged: (v) => item.descricao = v, validator: _req)`.
+> O `AppTextField` já expõe `onChanged` (adicionado na Task 5), então nenhum ajuste extra é necessário nele. O `_ItemField` grava cada alteração direto no `NfeItemInput` correspondente.
 
-- [ ] **Step 2: Ajustar `AppTextField` para aceitar `onChanged`**
+- [ ] **Step 2: Escrever e rodar o teste de comportamento (múltiplos itens)**
 
-Em `lib/src/widgets/app_text_field.dart`, adicionar o campo `final ValueChanged<String>? onChanged;` ao construtor e passar `onChanged: onChanged` ao `TextFormField`. Rodar o teste da Task 5 de novo:
+```dart
+// test/nfe_form_screen_test.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:emissor_nfe/src/api/nfe_api.dart';
+import 'package:emissor_nfe/src/auth_store.dart';
+import 'package:emissor_nfe/src/screens/nfe_form_screen.dart';
+import 'package:emissor_nfe/src/theme/app_theme.dart';
 
-Run: `flutter test test/widgets/app_text_field_test.dart`
-Expected: PASS (continua verde).
+void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
 
-- [ ] **Step 3: Simplificar o formulário usando `_ItemField` em todos os campos de item**
+  testWidgets('adicionar item incrementa a contagem de itens', (tester) async {
+    final api = NfeApi(
+        auth: AuthStore()..token = 't',
+        client: MockClient((r) async => http.Response('{}', 200)));
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.dark(),
+      home: NfeFormScreen(api: api, empresaId: 1),
+    ));
+    expect(find.text('Itens (1)'), findsOneWidget);
+    await tester.ensureVisible(find.text('Item'));
+    await tester.tap(find.text('Item'));
+    await tester.pumpAndSettle();
+    expect(find.text('Itens (2)'), findsOneWidget);
+  });
+}
+```
 
-Reescrever `_itemCard` para usar `_ItemField` (com `onChanged` gravando no `NfeItemInput`) em todos os campos, inclusive descrição, removendo os `TextEditingController` inline e a linha `..hashCode`. Garantir que `_ItemField.build` retorne diretamente o `AppTextField` com `onChanged: widget.onChanged`.
+Run: `flutter test test/nfe_form_screen_test.dart`
+Expected: PASS — a tela reescrita mostra "Itens (1)" e, após tocar no botão "Item", "Itens (2)". (Se rodar este teste contra a tela antiga, antes da reescrita, ele FALHA — não existe o botão "Item" nem o contador.)
 
-- [ ] **Step 4: Analyze**
+- [ ] **Step 3: Analyze**
 
-Run: `flutter analyze lib/src/screens/nfe_form_screen.dart lib/src/widgets/app_text_field.dart`
+Run: `flutter analyze lib/src/screens/nfe_form_screen.dart`
 Expected: sem erros.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add lib/src/screens/nfe_form_screen.dart lib/src/widgets/app_text_field.dart
+git add lib/src/screens/nfe_form_screen.dart test/nfe_form_screen_test.dart
 git commit -m "feat(ui): formulario de NF-e com multiplos itens repaginado"
 ```
 
